@@ -12,13 +12,11 @@ from dotenv import load_dotenv
 app = FastAPI()
 
 # 1. Setup Static Folder for Audio
-# This ensures the 'static' folder exists and is accessible via URL
 if not os.path.exists("static"):
     os.makedirs("static")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # 2. CORS Middleware
-# Allows your React frontend (localhost:5173) to talk to this backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,7 +26,6 @@ app.add_middleware(
 )
 
 # 3. Supabase Config
-# Make sure your .env file has SUPABASE_URL and SUPABASE_KEY
 load_dotenv()
 URL = os.getenv("SUPABASE_URL")
 KEY = os.getenv("SUPABASE_KEY")
@@ -51,32 +48,47 @@ class UserData(BaseModel):
 @app.post("/analyze")
 async def analyze(data: UserData):
     try:
-        print(f"--- Received Data from React: {data} ---")
+        print(f"--- Received Daily Data from React: {data} ---")
 
         # 1. Language Mapping
         lang_map = {"Tamil": "ta", "Hindi": "hi", "English": "en"}
         lang_code = lang_map.get(data.language, "en")
 
-        # 2. AGING LOGIC
+        # 2. AGING LOGIC (Applied to daily units)
         current_year = 2026
         age = current_year - data.appliance_year
         aging_factor = 1 + (max(0, age) * 0.02)
-        real_units = data.elec_units * aging_factor
+        daily_real_units = data.elec_units * aging_factor
 
-        # 3. TANGEDCO SLAB LOGIC
-        if real_units <= 100: 
-            cost = real_units * 1.50 
-        elif real_units <= 400: 
-            cost = real_units * 4.50
-        elif real_units <= 500: 
-            cost = real_units * 6.00
+        # 3. MONTHLY PROJECTION
+        monthly_units = daily_real_units * 30
+
+        # 4. TANGEDCO SLAB LOGIC (Based on Monthly Projection)
+        # We determine the rate per unit based on total monthly usage
+        if monthly_units <= 100: 
+            rate = 1.50 
+        elif monthly_units <= 400: 
+            rate = 4.50
+        elif monthly_units <= 500: 
+            rate = 6.00
         else: 
-            cost = real_units * 9.00
+            rate = 9.00
 
-        # 4. CARBON FOOTPRINT
-        carbon_kg = round((real_units * 0.82) + (data.fuel_liters * 2.31), 2)
+        # Calculating costs
+        daily_cost = daily_real_units * rate
+        monthly_cost = monthly_units * rate
 
-        # 5. DYNAMIC ADVICE LOGIC
+        # 5. CARBON FOOTPRINT (Calculated for both)
+        daily_carbon = (daily_real_units * 0.82) + (data.fuel_liters * 2.31)
+        monthly_carbon = daily_carbon * 30
+
+        # 6. SLAB ALERT LOGIC
+        # Specifically triggers if monthly units exceed 500
+        warning_msg = None
+        if monthly_units > 500:
+            warning_msg = f"High Usage Alert! Your projected monthly usage ({round(monthly_units)} units) is above the 500-unit slab. Rates are now ₹9.00/unit."
+
+        # 7. DYNAMIC ADVICE LOGIC
         advice_options = {
             "en": {
                 "Economy": "Pro-Tip: Switch to LED bulbs and clean your AC filters to save ₹300 monthly.",
@@ -90,7 +102,7 @@ async def analyze(data: UserData):
             },
             "hi": {
                 "Economy": "टिप: एलईडी बल्ब का उपयोग करें और महीने में ₹300 बचाएं।",
-                "Standard": f"आपके {age} साल पुराने उपकरण आपके बिल को बढ़ा रहे हैं।",
+                "Standard": f"आपके {age} साल पुराने उपकरण आपके बिल को बढ़ा रहे हैं।",
                 "Premium": "निवेश टिप: आपके उपयोग के लिए सोलर ग्रिड सबसे अच्छा विकल्प है।"
             }
         }
@@ -98,18 +110,20 @@ async def analyze(data: UserData):
         lang_tips = advice_options.get(lang_code, advice_options["en"])
         final_advice = lang_tips.get(data.budget, lang_tips["Standard"])
 
-        # 6. VOICE GENERATION
+        # 8. VOICE GENERATION
         tts = gTTS(text=final_advice, lang=lang_code)
         audio_filename = "advice.mp3"
         audio_path = os.path.join("static", audio_filename)
         tts.save(audio_path)
 
-        # 7. RESPONSE (Crucial Fix: Added full URL for the audio file)
+        # 9. RESPONSE
         return {
-            "warning": "High Slab Alert!" if real_units > 400 else None,
-            "carbon_footprint": carbon_kg,
-            "bill_est": round(cost, 2),
-            "real_units": round(real_units, 2),
+            "warning": warning_msg,
+            "daily_bill": round(daily_cost, 2),
+            "monthly_bill": round(monthly_cost, 2),
+            "daily_carbon": round(daily_carbon, 2),
+            "monthly_carbon": round(monthly_carbon, 2),
+            "monthly_units": round(monthly_units, 2),
             "advice": final_advice,
             "voice_url": f"http://127.0.0.1:8000/static/{audio_filename}?t={int(time.time())}"
         }
@@ -118,8 +132,6 @@ async def analyze(data: UserData):
         print(f"CRASH ERROR: {e}")
         return {"error": str(e)}
 
-# Start server
 if __name__ == "__main__":
     import uvicorn
-    # Make sure port 8000 is the one your React app is calling
     uvicorn.run(app, host="127.0.0.1", port=8000)
