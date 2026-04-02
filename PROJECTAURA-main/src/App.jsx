@@ -306,25 +306,26 @@ useEffect(() => {
   };
 
 const Step4Dashboard = ({ backendData, userData, prevStep, nextStep }) => {
-  const treesNeeded = Math.ceil((backendData?.carbon_footprint || 0) / 21);
+  // Trees are now calculated based on Monthly Carbon to show a bigger impact
+  const treesNeeded = Math.ceil((backendData?.monthly_carbon || 0) / 21);
   
-  // AUDIO LOGIC ONLY
-const playAudio = () => {
-  if (backendData?.voice_url) {
-    const audio = new Audio(backendData.voice_url);
-    audio.play().catch(e => console.error("Playback failed:", e));
-  } else {
-    alert("Audio not ready yet!");
-  }
-};
+  const playAudio = () => {
+    if (backendData?.voice_url) {
+      const audio = new Audio(backendData.voice_url);
+      audio.play().catch(e => console.error("Playback failed:", e));
+    } else {
+      alert("Audio data not found!");
+    }
+  };
 
   return (
     <div className="card">
-      {/* SLAB WARNING */}
+      {/* 1. THE DYNAMIC SLAB WARNING */}
       {backendData?.warning && (
         <div className="warning-banner" style={{
-          backgroundColor: '#fef2f2', border: '2px solid #ef4444', color: '#b91c1c',
-          padding: '1rem', borderRadius: '8px', marginBottom: '1rem', fontWeight: 'bold'
+          backgroundColor: '#fff1f2', border: '2px solid #ef4444', color: '#b91c1c',
+          padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontWeight: 'bold',
+          textAlign: 'center', animation: 'pulse 2s infinite'
         }}>
           ⚠️ {backendData.warning}
         </div>
@@ -333,16 +334,32 @@ const playAudio = () => {
       <h2 style={{ marginBottom: '20px' }}>Sustainability Dashboard</h2>
       
       <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-        {/* COST CARD */}
-        <div className="dash-card cost" style={{ padding: '15px', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
-          <h3 style={{ fontSize: '0.9rem', color: '#64748b' }}>Estimated Bill</h3>
-          <div className="big-text" style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>₹ {backendData?.bill_est || 0}</div>
+        
+        {/* DAILY COST CARD */}
+        <div className="dash-card" style={{ padding: '15px', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center' }}>
+          <h3 style={{ fontSize: '0.8rem', color: '#64748b', margin: '0' }}>Today's Cost</h3>
+          <div style={{ fontSize: '1.6rem', fontWeight: 'bold' }}>₹ {backendData?.daily_bill || 0}</div>
         </div>
 
-        {/* CARBON CARD */}
-        <div className="dash-card carbon-meter" style={{ padding: '15px', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
-          <h3 style={{ fontSize: '0.9rem', color: '#64748b' }}>Carbon Footprint</h3>
-          <div className="big-text" style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#ef4444' }}>{backendData?.carbon_footprint || 0} kg</div>
+        {/* MONTHLY COST CARD (Highlighted) */}
+        <div className="dash-card" style={{ 
+          padding: '15px', border: '2px solid #4f46e5', borderRadius: '12px', 
+          textAlign: 'center', background: '#f5f3ff' 
+        }}>
+          <h3 style={{ fontSize: '0.8rem', color: '#4f46e5', margin: '0' }}>Monthly Projection</h3>
+          <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#4338ca' }}>₹ {backendData?.monthly_bill || 0}</div>
+        </div>
+
+        {/* MONTHLY CARBON CARD */}
+        <div className="dash-card carbon-meter" style={{ 
+          padding: '15px', border: '1px solid #e2e8f0', borderRadius: '12px', 
+          gridColumn: 'span 2', textAlign: 'center' 
+        }}>
+          <h3 style={{ fontSize: '0.9rem', color: '#64748b' }}>Monthly Carbon Footprint</h3>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ef4444' }}>
+            {backendData?.monthly_carbon || 0} kg
+          </div>
+          <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Total CO2 emitted per month</p>
         </div>
 
         {/* TREE GOAL */}
@@ -351,37 +368,31 @@ const playAudio = () => {
           padding: '20px', borderRadius: '12px', textAlign: 'center' 
         }}>
           <div style={{ fontSize: '2.5rem' }}>🌳</div>
-          <h3 style={{ color: '#166534', margin: '5px 0' }}>Reforestation Goal</h3>
+          <h3 style={{ color: '#166534', margin: '5px 0' }}>Monthly Offset Goal</h3>
           <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#15803d' }}>
             {treesNeeded} Trees
           </div>
-          <p style={{ fontSize: '0.8rem', color: '#166534' }}>Monthly goal to offset your usage</p>
+          <p style={{ fontSize: '0.8rem', color: '#166534' }}>Required to neutralize your footprint</p>
         </div>
       </div>
 
       {/* ADVICE SECTION */}
-      <div className="dash-card advice" style={{ marginTop: '15px', padding: '15px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-        <h3 style={{ fontSize: '0.9rem', color: '#64748b', margin: '0 0 5px 0' }}>AI Engineering Advice</h3>
-        <p style={{ fontSize: '0.95rem', margin: 0, fontStyle: 'italic' }}>{backendData?.advice}</p>
+      <div className="dash-card advice" style={{ 
+        marginTop: '15px', padding: '15px', background: '#f8fafc', 
+        borderRadius: '12px', border: '1px solid #e2e8f0' 
+      }}>
+        <h3 style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 5px 0' }}>AI Usage Insight</h3>
+        <p style={{ fontSize: '0.95rem', margin: 0, fontStyle: 'italic', color: '#1e293b' }}>
+          "{backendData?.advice}"
+        </p>
       </div>
 
       {/* MULTILINGUAL AUDIO BUTTON */}
       <div style={{ marginTop: '20px' }}>
-        <button 
-          className="audio-btn" 
-          onClick={playAudio}
-          style={{ 
-            width: '100%', 
-            padding: '15px', 
-            background: '#4f46e5', 
-            color: 'white', 
-            borderRadius: '8px', 
-            border: 'none', 
-            cursor: 'pointer', 
-            fontWeight: 'bold',
-            fontSize: '1rem' 
-          }}
-        >
+        <button className="audio-btn" onClick={playAudio} style={{ 
+            width: '100%', padding: '15px', background: '#4f46e5', color: 'white', 
+            borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold' 
+        }}>
           🔊 Hear Summary in {userData.language}
         </button>
       </div>
@@ -389,7 +400,7 @@ const playAudio = () => {
       {/* NAVIGATION */}
       <div className="button-group" style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
         <button className="secondary-btn" onClick={prevStep} style={{ flex: 1 }}>Back</button>
-        <button className="primary-btn" onClick={nextStep} style={{ flex: 1 }}>View Growth Rate</button>
+        <button className="primary-btn" onClick={nextStep} style={{ flex: 1 }}>Growth Rate</button>
       </div>
     </div>
   );
