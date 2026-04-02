@@ -72,7 +72,7 @@ useEffect(() => {
                        applianceYears.includes('2010-2019') ? 2015 : 2024;
 
     // 4. API Call to LOCALHOST
-    const response = await axios.post('http://127.0.0.1:8000/analyze', {
+    const response = await axios.post('https://aura-1-syt7.onrender.com', {
       user_id: "2c1f2d20-dc85-41ba-9c95-b43fc694be59", 
       elec_units: finalElecUnits,
       water_liters: parseFloat(waterData.waterLiters || 0),
